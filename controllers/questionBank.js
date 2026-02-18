@@ -370,7 +370,7 @@ class QuestionBank {
      * @private
      */
     generateArithmeticQuestion(difficulty) {
-        const operations = ['addition', 'subtraction', 'multiplication', 'division'];
+        const operations = ['addition', 'subtraction', 'multiplication', 'division', 'exponent', 'squareroot', 'orderofoperations'];
         const operation = operations[Math.floor(Math.random() * operations.length)];
         
         switch (operation) {
@@ -382,6 +382,12 @@ class QuestionBank {
                 return this.generateMultiplication(difficulty);
             case 'division':
                 return this.generateDivision(difficulty);
+            case 'exponent':
+                return this.generateExponent(difficulty);
+            case 'squareroot':
+                return this.generateSquareRoot(difficulty);
+            case 'orderofoperations':
+                return this.generateOrderOfOperations(difficulty);
         }
     }
 
@@ -504,6 +510,131 @@ class QuestionBank {
             explanation: `${dividend} ÷ ${divisor} = ${quotient}`,
             category: 'arithmetic',
             difficulty: difficulty,
+            type: 'multiple_choice'
+        };
+    }
+
+    /**
+     * Generar exponente
+     * @private
+     */
+    generateExponent(difficulty) {
+        const configs = {
+            easy:   { bases: [2,3,4,5], exps: [2,3] },
+            medium: { bases: [2,3,4,5,6,7,8], exps: [2,3] },
+            hard:   { bases: [2,3,4,5,6,7,8,9,10], exps: [2,3,4] }
+        };
+        const cfg = configs[difficulty] || configs.medium;
+        const base = cfg.bases[Math.floor(Math.random() * cfg.bases.length)];
+        const exp  = cfg.exps[Math.floor(Math.random() * cfg.exps.length)];
+        const answer = Math.pow(base, exp);
+
+        const wrongAnswers = this.generateWrongAnswers(answer, 3);
+        const options = this.shuffleArray([answer.toString(), ...wrongAnswers]);
+
+        return {
+            question: `¿Cuánto es ${base}^${exp}?`,
+            options: options,
+            correctAnswer: answer.toString(),
+            explanation: `${base}^${exp} = ${answer}`,
+            category: 'arithmetic',
+            difficulty: difficulty,
+            type: 'multiple_choice'
+        };
+    }
+
+    /**
+     * Generar raíz cuadrada
+     * @private
+     */
+    generateSquareRoot(difficulty) {
+        const pools = {
+            easy:   [1,4,9,16,25,36,49,64,81,100],
+            medium: [100,121,144,169,196,225,256,289,324,400],
+            hard:   [400,441,484,529,576,625,676,729,784,900]
+        };
+        const pool = pools[difficulty] || pools.easy;
+        const radicand = pool[Math.floor(Math.random() * pool.length)];
+        const answer = Math.round(Math.sqrt(radicand));
+
+        const wrongAnswers = this.generateWrongAnswers(answer, 3);
+        const options = this.shuffleArray([answer.toString(), ...wrongAnswers]);
+
+        return {
+            question: `¿Cuánto es √${radicand}?`,
+            options: options,
+            correctAnswer: answer.toString(),
+            explanation: `√${radicand} = ${answer}`,
+            category: 'arithmetic',
+            difficulty: difficulty,
+            type: 'multiple_choice'
+        };
+    }
+
+    /**
+     * Generar orden de operaciones (PEMDAS)
+     * @private
+     */
+    generateOrderOfOperations(difficulty) {
+        const configs = {
+            easy:   { types: ['add_mul', 'mul_add', 'paren_add_mul'], max: 8 },
+            medium: { types: ['add_mul', 'mul_add', 'paren_add_mul', 'paren_sub_mul', 'paren_mul_add'], max: 12 },
+            hard:   { types: ['add_mul', 'mul_add', 'paren_add_mul', 'paren_sub_mul', 'three_terms', 'paren_mul_add'], max: 15 }
+        };
+        const cfg = configs[difficulty] || configs.medium;
+        const type = cfg.types[Math.floor(Math.random() * cfg.types.length)];
+        const hi = cfg.max;
+        const r = (a, b) => this.randomInt(a, b);
+
+        let expr, correct, w1, w2, w3;
+
+        if (type === 'add_mul') {
+            const a=r(1,hi), b=r(2,hi), c=r(2,hi);
+            expr=`${a} + ${b} × ${c}`;  correct=a+b*c;
+            w1=(a+b)*c; w2=a*b+c; w3=a+b+c;
+        } else if (type === 'mul_add') {
+            const a=r(2,hi), b=r(2,hi), c=r(1,hi);
+            expr=`${a} × ${b} + ${c}`;  correct=a*b+c;
+            w1=a*(b+c); w2=a+b+c; w3=a*b-c;
+        } else if (type === 'paren_add_mul') {
+            const a=r(1,hi), b=r(1,hi), c=r(2,hi);
+            expr=`(${a} + ${b}) × ${c}`;  correct=(a+b)*c;
+            w1=a+b*c; w2=a*c+b; w3=(a+b)+c;
+        } else if (type === 'paren_sub_mul') {
+            const b=r(1,hi-1), a=r(b+1,hi), c=r(2,hi);
+            expr=`(${a} - ${b}) × ${c}`;  correct=(a-b)*c;
+            w1=a-b*c; w2=a*c-b; w3=(a+b)*c;
+        } else if (type === 'paren_mul_add') {
+            const a=r(2,hi), b=r(2,hi), c=r(1,hi);
+            expr=`${a} × (${b} + ${c})`;  correct=a*(b+c);
+            w1=a*b+c; w2=a*b*c; w3=(a+b)*c;
+        } else { // three_terms
+            const a=r(2,hi), b=r(2,hi), c=r(2,hi), d=r(2,hi);
+            expr=`${a} + ${b} - ${c} × ${d}`;  correct=a+b-c*d;
+            w1=(a+b-c)*d; w2=a+b-c+d; w3=a*b-c*d;
+        }
+
+        const used = new Set([correct]);
+        const wrongs = [w1, w2, w3]
+            .filter(w => !used.has(w) && w >= 0 && used.add(w))
+            .map(w => w.toString());
+
+        let fill = 1;
+        while (wrongs.length < 3) {
+            const cand = correct + fill;
+            if (!used.has(cand)) { wrongs.push(cand.toString()); used.add(cand); }
+            fill = fill > 0 ? -fill : -fill + 1;
+        }
+
+        const options = this.shuffleArray([correct.toString(), ...wrongs.slice(0, 3)]);
+
+        return {
+            question: `¿Cuánto es: ${expr}?`,
+            options,
+            correctAnswer: correct.toString(),
+            explanation: `PEMDAS: ${expr} = ${correct}`,
+            category: 'arithmetic',
+            difficulty,
             type: 'multiple_choice'
         };
     }
