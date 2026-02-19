@@ -42,7 +42,7 @@ const gameLogic = new GameLogic();
 const questionBank = new QuestionBank();
 
 // Configuración del puerto
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 
 /**
  * MANEJO DE CONEXIONES SOCKET.IO
