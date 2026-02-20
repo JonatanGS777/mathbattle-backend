@@ -220,15 +220,26 @@ class GameLogic {
         }
         
         const currentQuestion = session.currentQuestion;
-        const answers = Array.from(session.currentRoundAnswers.values());
-        
-        // Estadísticas de la ronda
+        const allAnswers = Array.from(session.currentRoundAnswers.values());
+
+        // Jugadores que NO son observadores
+        const activePlayers = session.players.filter(p => !p.isObserver);
+
+        // Solo contabilizar respuestas de jugadores activos (no observadores)
+        const answers = allAnswers.filter(a => {
+            const player = session.players.find(p => p.id === a.playerId);
+            return !player?.isObserver;
+        });
+
+        // Estadísticas de la ronda (sobre jugadores activos)
         const correctAnswers = answers.filter(a => a.isCorrect).length;
-        const averageResponseTime = answers.reduce((sum, a) => sum + a.responseTime, 0) / answers.length;
-        const fastestResponse = Math.min(...answers.map(a => a.responseTime));
-        
-        // Ranking de jugadores para esta ronda
-        const roundRanking = answers
+        const averageResponseTime = answers.length
+            ? answers.reduce((sum, a) => sum + a.responseTime, 0) / answers.length
+            : 0;
+        const fastestResponse = answers.length ? Math.min(...answers.map(a => a.responseTime)) : 0;
+
+        // Ranking de jugadores para esta ronda (sin observadores)
+        const roundRanking = [...answers]
             .sort((a, b) => {
                 if (b.isCorrect !== a.isCorrect) return b.isCorrect - a.isCorrect;
                 if (b.pointsEarned !== a.pointsEarned) return b.pointsEarned - a.pointsEarned;
@@ -242,19 +253,19 @@ class GameLogic {
                 responseTime: answer.responseTime,
                 currentTotalScore: session.playerScores.get(answer.playerId)
             }));
-        
+
         const roundResult = {
             questionNumber: session.currentQuestionIndex + 1,
             question: currentQuestion,
             correctAnswer: currentQuestion.correctAnswer,
             explanation: currentQuestion.explanation,
-            
-            // Estadísticas de la ronda
+
+            // Estadísticas de la ronda (solo jugadores activos)
             stats: {
-                totalPlayers: session.players.length,
+                totalPlayers: activePlayers.length,
                 playersAnswered: answers.length,
                 correctAnswers: correctAnswers,
-                accuracy: Math.round((correctAnswers / answers.length) * 100),
+                accuracy: answers.length ? Math.round((correctAnswers / answers.length) * 100) : 0,
                 averageResponseTime: Math.round(averageResponseTime),
                 fastestResponse: fastestResponse
             },
@@ -322,7 +333,7 @@ class GameLogic {
         const finalResults = {
             gameId: roomCode,
             totalQuestions: session.questions.length,
-            totalPlayers: session.players.length,
+            totalPlayers: session.players.filter(p => !p.isObserver).length,
             
             // Ranking final
             finalRanking: finalRanking,
@@ -460,9 +471,11 @@ class GameLogic {
                 return {
                     playerId: playerId,
                     playerName: player ? player.name : 'Desconocido',
-                    totalScore: score
+                    totalScore: score,
+                    isObserver: player ? !!player.isObserver : false
                 };
             })
+            .filter(p => !p.isObserver)   // Excluir al host-moderador del ranking
             .sort((a, b) => b.totalScore - a.totalScore)
             .map((player, index) => ({
                 ...player,

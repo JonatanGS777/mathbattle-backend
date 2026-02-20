@@ -59,12 +59,17 @@ io.on('connection', (socket) => {
      */
     socket.on('create-room', (playerData) => {
         try {
-            const { playerName, gameSettings } = playerData;
-            
+            const { playerName, gameSettings, hostPlays = true } = playerData;
+
             // Crear sala y añadir jugador como host
             const room = roomManager.createRoom(socket.id, gameSettings);
             const player = playerManager.createPlayer(socket.id, playerName, true);
-            
+
+            // Si el host eligió no jugar, marcarlo como observador
+            if (!hostPlays) {
+                player.isObserver = true;
+            }
+
             // Unir jugador a la sala
             socket.join(room.code);
             roomManager.addPlayerToRoom(room.code, player);
